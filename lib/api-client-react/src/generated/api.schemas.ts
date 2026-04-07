@@ -117,4 +117,14 @@ export interface HostPreset {
   hosts: Host[];
 }
 
+export interface FetchUrlBody {
+  url: string;
+}
+
+export interface FetchUrlResponse {
+  topic: string;
+  sourceTitle: string;
+  sourceUrl: string;
+}
+
 export type GenerateEpisode200 = { [key: string]: unknown };

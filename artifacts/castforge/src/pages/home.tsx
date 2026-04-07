@@ -1,12 +1,16 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { useGetHostPresets, type GenerateEpisodeBodyFormat } from "@workspace/api-client-react";
+import { useGetHostPresets, useFetchUrlTopic, type GenerateEpisodeBodyFormat } from "@workspace/api-client-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Mic, Zap, Users, ShieldAlert, Flame, Radio, AudioWaveform, Laugh, Swords, Search, GraduationCap, Mic2, type LucideIcon } from "lucide-react";
+import {
+  Mic, Zap, Users, ShieldAlert, Flame, Radio, AudioWaveform,
+  Laugh, Swords, Search, GraduationCap, Mic2, Link2, X, Loader2,
+  type LucideIcon,
+} from "lucide-react";
 
 const PRESET_ICONS: Record<string, LucideIcon> = {
   Laugh,
@@ -26,14 +30,64 @@ const FORMATS: { id: GenerateEpisodeBodyFormat; label: string; icon: React.React
   { id: "interview", label: "Expert Interview", icon: <Radio className="h-5 w-5" />, desc: "In-depth Q&A style" },
 ];
 
+function isUrl(value: string): boolean {
+  try {
+    const u = new URL(value.trim());
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export default function Home() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { data: presets, isLoading: isPresetsLoading } = useGetHostPresets();
+  const fetchUrlMutation = useFetchUrlTopic();
 
   const [topic, setTopic] = useState("");
   const [selectedFormat, setSelectedFormat] = useState<GenerateEpisodeBodyFormat | null>(null);
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
+
+  // URL extraction state
+  const [detectedUrl, setDetectedUrl] = useState<string | null>(null);
+  const [sourceTitle, setSourceTitle] = useState<string | null>(null);
+  const [sourceUrl, setSourceUrl] = useState<string | null>(null);
+
+  const handleTopicChange = useCallback((value: string) => {
+    setTopic(value);
+    if (isUrl(value)) {
+      setDetectedUrl(value.trim());
+    } else {
+      setDetectedUrl(null);
+      // If user edited the extracted topic manually, clear source attribution
+      if (sourceUrl) {
+        setSourceTitle(null);
+        setSourceUrl(null);
+      }
+    }
+  }, [sourceUrl]);
+
+  const handleFetchUrl = async () => {
+    if (!detectedUrl) return;
+    try {
+      const result = await fetchUrlMutation.mutateAsync({ data: { url: detectedUrl } });
+      setTopic(result.topic);
+      setSourceTitle(result.sourceTitle);
+      setSourceUrl(result.sourceUrl);
+      setDetectedUrl(null);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to extract content from this URL";
+      toast({ title: "Could not read URL", description: msg, variant: "destructive" });
+    }
+  };
+
+  const clearSource = () => {
+    setSourceTitle(null);
+    setSourceUrl(null);
+    setTopic("");
+    setDetectedUrl(null);
+  };
 
   const handleGenerate = () => {
     if (!topic || topic.length < 3) {
@@ -61,6 +115,8 @@ export default function Home() {
     sessionStorage.setItem("castforge_generation_payload", JSON.stringify(payload));
     setLocation("/studio");
   };
+
+  const isFetching = fetchUrlMutation.isPending;
 
   return (
     <div className="container mx-auto px-4 py-12 md:py-24 max-w-5xl relative z-10">
@@ -92,7 +148,7 @@ export default function Home() {
           transition={{ delay: 0.2 }}
           className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto"
         >
-          Type a topic. Pick a vibe. Cast your hosts. Let the AI generate a fully produced, multi-voice audio experience instantly.
+          Type a topic or paste a URL. Pick a vibe. Cast your hosts. Let the AI generate a fully produced, multi-voice audio experience instantly.
         </motion.p>
       </div>
 
@@ -108,13 +164,74 @@ export default function Home() {
             <div className="flex items-center justify-center h-8 w-8 rounded-full bg-white/10 text-white font-bold">1</div>
             <h2 className="text-2xl font-bold text-white">What's the topic?</h2>
           </div>
-          <div className="relative">
-            <Input 
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              placeholder="e.g. The history of the Roman Empire, but make it funny..."
-              className="w-full text-xl md:text-2xl p-8 rounded-2xl bg-white/5 border-white/10 focus-visible:ring-primary h-24 placeholder:text-muted-foreground/50 transition-all focus:bg-white/10"
-            />
+
+          <div className="space-y-3">
+            <div className="relative">
+              <Input 
+                value={topic}
+                onChange={(e) => handleTopicChange(e.target.value)}
+                placeholder="Type a topic or paste a URL to any article..."
+                className="w-full text-xl md:text-2xl p-8 rounded-2xl bg-white/5 border-white/10 focus-visible:ring-primary h-24 placeholder:text-muted-foreground/50 transition-all focus:bg-white/10 pr-48"
+              />
+
+              {/* URL fetch button — shown when a URL is detected */}
+              {detectedUrl && (
+                <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                  <Button
+                    onClick={handleFetchUrl}
+                    disabled={isFetching}
+                    size="sm"
+                    className="bg-primary hover:bg-primary/90 text-white rounded-xl px-4 py-2 text-sm font-semibold"
+                  >
+                    {isFetching ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Reading...
+                      </>
+                    ) : (
+                      <>
+                        <Link2 className="mr-2 h-4 w-4" />
+                        Extract Topic
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Source attribution chip */}
+            {sourceTitle && sourceUrl && (
+              <motion.div
+                initial={{ opacity: 0, y: -6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 w-fit"
+              >
+                <Link2 className="h-3.5 w-3.5 text-primary shrink-0" />
+                <span className="text-sm text-muted-foreground">Source:</span>
+                <a
+                  href={sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline truncate max-w-xs"
+                >
+                  {sourceTitle}
+                </a>
+                <button
+                  onClick={clearSource}
+                  className="ml-1 text-muted-foreground hover:text-white transition-colors"
+                  aria-label="Clear source"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </motion.div>
+            )}
+
+            {/* URL helper hint */}
+            {!detectedUrl && !sourceUrl && (
+              <p className="text-xs text-muted-foreground/50 pl-1">
+                Tip: paste any article or blog URL to automatically extract the topic
+              </p>
+            )}
           </div>
         </section>
 

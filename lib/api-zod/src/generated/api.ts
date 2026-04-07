@@ -143,6 +143,19 @@ export const SaveVoiceResponse = zod.object({
 });
 
 /**
+ * @summary Fetch a URL and extract a podcast topic from its content
+ */
+export const FetchUrlTopicBody = zod.object({
+  url: zod.string(),
+});
+
+export const FetchUrlTopicResponse = zod.object({
+  topic: zod.string(),
+  sourceTitle: zod.string(),
+  sourceUrl: zod.string(),
+});
+
+/**
  * @summary Get preset host configuration pairs
  */
 export const GetHostPresetsResponseItem = zod.object({

@@ -19,6 +19,8 @@ import type {
 import type {
   Episode,
   ErrorResponse,
+  FetchUrlBody,
+  FetchUrlResponse,
   GenerateEpisode200,
   GenerateEpisodeBody,
   HealthStatus,
@@ -616,6 +618,92 @@ export const useSaveVoice = <
   TContext
 > => {
   return useMutation(getSaveVoiceMutationOptions(options));
+};
+
+/**
+ * @summary Fetch a URL and extract a podcast topic from its content
+ */
+export const getFetchUrlTopicUrl = () => {
+  return `/api/castforge/fetch-url`;
+};
+
+export const fetchUrlTopic = async (
+  fetchUrlBody: FetchUrlBody,
+  options?: RequestInit,
+): Promise<FetchUrlResponse> => {
+  return customFetch<FetchUrlResponse>(getFetchUrlTopicUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(fetchUrlBody),
+  });
+};
+
+export const getFetchUrlTopicMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof fetchUrlTopic>>,
+    TError,
+    { data: BodyType<FetchUrlBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof fetchUrlTopic>>,
+  TError,
+  { data: BodyType<FetchUrlBody> },
+  TContext
+> => {
+  const mutationKey = ["fetchUrlTopic"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof fetchUrlTopic>>,
+    { data: BodyType<FetchUrlBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return fetchUrlTopic(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type FetchUrlTopicMutationResult = NonNullable<
+  Awaited<ReturnType<typeof fetchUrlTopic>>
+>;
+export type FetchUrlTopicMutationBody = BodyType<FetchUrlBody>;
+export type FetchUrlTopicMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Fetch a URL and extract a podcast topic from its content
+ */
+export const useFetchUrlTopic = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof fetchUrlTopic>>,
+    TError,
+    { data: BodyType<FetchUrlBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof fetchUrlTopic>>,
+  TError,
+  { data: BodyType<FetchUrlBody> },
+  TContext
+> => {
+  return useMutation(getFetchUrlTopicMutationOptions(options));
 };
 
 /**

@@ -10,6 +10,8 @@ export * from "./episode";
 export * from "./episodeHost";
 export * from "./episodeStatus";
 export * from "./errorResponse";
+export * from "./fetchUrlBody";
+export * from "./fetchUrlResponse";
 export * from "./generateEpisode200";
 export * from "./generateEpisodeBody";
 export * from "./generateEpisodeBodyFormat";
