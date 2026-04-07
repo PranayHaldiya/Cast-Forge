@@ -71,27 +71,27 @@ router.post("/castforge/generate", async (req, res): Promise<void> => {
   sendEvent(res, { step: "start", episodeId: episode.id, message: "Starting your podcast...", progress: 5 });
 
   try {
-    // ─── STEP 1: Voice Design (parallel for each host) ───
+    // ─── STEP 1: Voice Design (sequential per host to avoid rate limits) ───
     sendEvent(res, { step: "voices", message: "Casting your hosts...", progress: 10 });
 
     const voiceIds: string[] = [];
-    const hostsWithVoices = await Promise.all(
-      hosts.map(async (host, idx) => {
-        const sampleText = getSampleText(format, host.name);
-        const previews = await createVoicePreviews(host.description, sampleText);
-        if (!previews || previews.length === 0) {
-          throw new Error(`No voice preview generated for host: ${host.name}`);
-        }
-        // Save the first preview as the actual voice
-        const voiceId = await saveVoice(
-          previews[0].generatedVoiceId,
-          `CastForge-${host.name}-${episode.id}`,
-          host.description,
-        );
-        voiceIds[idx] = voiceId;
-        return { name: host.name, description: host.description, voiceId };
-      }),
-    );
+    const hostsWithVoices: Array<{ name: string; description: string; voiceId: string }> = [];
+    for (let idx = 0; idx < hosts.length; idx++) {
+      const host = hosts[idx];
+      sendEvent(res, { step: "voices", message: `Designing voice for ${host.name}...`, progress: 10 + idx * 8 });
+      const sampleText = getSampleText(format, host.name);
+      const previews = await createVoicePreviews(host.description, sampleText);
+      if (!previews || previews.length === 0) {
+        throw new Error(`No voice preview generated for host: ${host.name}`);
+      }
+      const voiceId = await saveVoice(
+        previews[0].generatedVoiceId,
+        `CastForge-${host.name}-${episode.id}`,
+        host.description,
+      );
+      voiceIds[idx] = voiceId;
+      hostsWithVoices.push({ name: host.name, description: host.description, voiceId });
+    }
 
     req.log.info({ episodeId: episode.id, voiceIds }, "Voices created");
     sendEvent(res, { step: "voices_done", message: `Hosts cast: ${hosts.map((h) => h.name).join(" & ")}`, progress: 28 });

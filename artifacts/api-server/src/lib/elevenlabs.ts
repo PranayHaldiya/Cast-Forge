@@ -95,13 +95,15 @@ export interface DialogueInput {
 }
 
 /**
- * Generate multi-speaker dialogue by synthesizing each line individually
- * and returning the concatenated buffers (to be stitched by audio-mixer).
+ * Generate multi-speaker dialogue by synthesizing each line sequentially
+ * to avoid hitting ElevenLabs concurrent request limits.
  */
 export async function generateDialogue(inputs: DialogueInput[]): Promise<Buffer[]> {
-  const buffers = await Promise.all(
-    inputs.map((input) => textToSpeechFlash(input.voiceId, input.text)),
-  );
+  const buffers: Buffer[] = [];
+  for (const input of inputs) {
+    const buf = await textToSpeechFlash(input.voiceId, input.text);
+    buffers.push(buf);
+  }
   return buffers;
 }
 
