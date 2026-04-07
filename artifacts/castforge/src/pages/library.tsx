@@ -4,7 +4,8 @@ import { motion } from "framer-motion";
 import { formatDistanceToNow } from "date-fns";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Play, Trash2, Headphones, Clock, Mic2, ArrowRight } from "lucide-react";
+import { useAuth } from "@workspace/replit-auth-web";
+import { Play, Trash2, Headphones, Clock, Mic2, ArrowRight, LogIn } from "lucide-react";
 
 function formatDuration(seconds: number | null) {
   if (!seconds) return "0:00";
@@ -23,10 +24,32 @@ const FORMAT_LABELS: Record<string, string> = {
 };
 
 export default function Library() {
-  const { data: episodes, isLoading } = useListEpisodes();
+  const { isAuthenticated, isLoading: authLoading, login } = useAuth();
+  const { data: episodes, isLoading } = useListEpisodes({ query: { enabled: isAuthenticated } });
   const deleteEpisode = useDeleteEpisode();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  if (authLoading) return null;
+
+  if (!isAuthenticated) {
+    return (
+      <div className="container mx-auto px-4 py-32 max-w-5xl flex flex-col items-center gap-6 text-center">
+        <Mic2 className="h-12 w-12 text-primary/40" />
+        <h2 className="font-display text-3xl tracking-wider">YOUR LIBRARY</h2>
+        <p className="font-mono text-sm text-muted-foreground max-w-sm">
+          Log in to view your generated episodes.
+        </p>
+        <button
+          onClick={login}
+          className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-primary px-5 py-3 rounded border border-primary/30 hover:bg-primary/10 transition-colors"
+        >
+          <LogIn className="h-4 w-4" />
+          Log In
+        </button>
+      </div>
+    );
+  }
 
   const handleDelete = async (id: number, e: React.MouseEvent) => {
     e.preventDefault();

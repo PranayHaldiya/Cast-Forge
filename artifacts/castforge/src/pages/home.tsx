@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { useGetHostPresets, useFetchUrlTopic, type GenerateEpisodeBodyFormat } from "@workspace/api-client-react";
+import { useAuth } from "@workspace/replit-auth-web";
 import { useToast } from "@/hooks/use-toast";
 import {
   Mic, Zap, Users, ShieldAlert, Flame, Radio,
@@ -39,6 +40,7 @@ const fadeUp = {
 export default function Home() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { isAuthenticated, login } = useAuth();
   const { data: presets, isLoading: isPresetsLoading } = useGetHostPresets();
   const fetchUrlMutation = useFetchUrlTopic();
 
@@ -99,6 +101,10 @@ export default function Home() {
     }
     if (!selectedPresetId) {
       toast({ title: "Hosts required", description: "Select a host configuration.", variant: "destructive" });
+      return;
+    }
+    if (!isAuthenticated) {
+      login();
       return;
     }
     const preset = presets?.find((p) => p.id === selectedPresetId);

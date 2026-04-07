@@ -40,6 +40,13 @@ function sendEvent(res: Response, data: Record<string, unknown>) {
 }
 
 router.post("/castforge/generate", async (req, res): Promise<void> => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const userId = req.user.id;
+
   // Set SSE headers
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -64,6 +71,7 @@ router.post("/castforge/generate", async (req, res): Promise<void> => {
       format,
       hosts: hosts.map((h) => ({ name: h.name, description: h.description, voiceId: null })),
       status: "generating",
+      userId,
     })
     .returning();
 

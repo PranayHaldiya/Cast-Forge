@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db, episodesTable } from "@workspace/db";
 import {
   ListEpisodesResponse,
@@ -11,10 +11,16 @@ import { deleteAudioFile } from "../../lib/elevenlabs.js";
 
 const router: IRouter = Router();
 
-router.get("/castforge/episodes", async (_req, res): Promise<void> => {
+router.get("/castforge/episodes", async (req, res): Promise<void> => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
   const episodes = await db
     .select()
     .from(episodesTable)
+    .where(eq(episodesTable.userId, req.user.id))
     .orderBy(episodesTable.createdAt);
 
   const mapped = episodes.map((e) => ({
@@ -34,6 +40,11 @@ router.get("/castforge/episodes", async (_req, res): Promise<void> => {
 });
 
 router.get("/castforge/episodes/:id", async (req, res): Promise<void> => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
   const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const params = GetEpisodeParams.safeParse({ id: parseInt(rawId, 10) });
   if (!params.success) {
@@ -44,7 +55,7 @@ router.get("/castforge/episodes/:id", async (req, res): Promise<void> => {
   const [episode] = await db
     .select()
     .from(episodesTable)
-    .where(eq(episodesTable.id, params.data.id));
+    .where(and(eq(episodesTable.id, params.data.id), eq(episodesTable.userId, req.user.id)));
 
   if (!episode) {
     res.status(404).json({ error: "Episode not found" });
@@ -68,6 +79,11 @@ router.get("/castforge/episodes/:id", async (req, res): Promise<void> => {
 });
 
 router.delete("/castforge/episodes/:id", async (req, res): Promise<void> => {
+  if (!req.isAuthenticated()) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
   const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
   const params = DeleteEpisodeParams.safeParse({ id: parseInt(rawId, 10) });
   if (!params.success) {
@@ -78,20 +94,19 @@ router.delete("/castforge/episodes/:id", async (req, res): Promise<void> => {
   const [episode] = await db
     .select()
     .from(episodesTable)
-    .where(eq(episodesTable.id, params.data.id));
+    .where(and(eq(episodesTable.id, params.data.id), eq(episodesTable.userId, req.user.id)));
 
   if (!episode) {
     res.status(404).json({ error: "Episode not found" });
     return;
   }
 
-  // Delete audio file if it exists
   if (episode.audioUrl) {
     const filename = episode.audioUrl.split("/").pop();
     if (filename) deleteAudioFile(filename);
   }
 
-  await db.delete(episodesTable).where(eq(episodesTable.id, params.data.id));
+  await db.delete(episodesTable).where(and(eq(episodesTable.id, params.data.id), eq(episodesTable.userId, req.user.id)));
   res.sendStatus(204);
 });
 

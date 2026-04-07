@@ -1,8 +1,10 @@
 import { Link, useLocation } from "wouter";
-import { Mic2 } from "lucide-react";
+import { Mic2, LogIn, LogOut } from "lucide-react";
+import { useAuth } from "@workspace/replit-auth-web";
 
 export function Navbar() {
   const [location] = useLocation();
+  const { user, isAuthenticated, isLoading, login, logout } = useAuth();
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b border-white/[0.06] bg-background/90 backdrop-blur-md">
@@ -17,18 +19,20 @@ export function Navbar() {
           </span>
         </Link>
 
-        {/* Nav links */}
+        {/* Nav links + auth */}
         <div className="flex items-center gap-1">
-          <Link
-            href="/episodes"
-            className={`font-mono text-xs uppercase tracking-widest px-4 py-2 rounded transition-colors ${
-              location === "/episodes"
-                ? "text-primary bg-primary/10"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            Library
-          </Link>
+          {isAuthenticated && (
+            <Link
+              href="/episodes"
+              className={`font-mono text-xs uppercase tracking-widest px-4 py-2 rounded transition-colors ${
+                location === "/episodes"
+                  ? "text-primary bg-primary/10"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Library
+            </Link>
+          )}
           <Link
             href="/"
             className={`font-mono text-xs uppercase tracking-widest px-4 py-2 rounded transition-colors flex items-center gap-2 ${
@@ -40,6 +44,45 @@ export function Navbar() {
             <span className="onair-dot inline-block h-1.5 w-1.5 rounded-full bg-accent" />
             Studio
           </Link>
+
+          {/* Auth control */}
+          {!isLoading && (
+            <div className="ml-3 flex items-center gap-2 pl-3 border-l border-white/[0.06]">
+              {isAuthenticated ? (
+                <>
+                  {user?.profileImageUrl ? (
+                    <img
+                      src={user.profileImageUrl}
+                      alt={user.firstName ?? "User"}
+                      className="h-7 w-7 rounded-full object-cover border border-white/10"
+                    />
+                  ) : (
+                    <div className="h-7 w-7 rounded-full bg-primary/20 border border-primary/30 flex items-center justify-center">
+                      <span className="font-mono text-[10px] text-primary font-bold">
+                        {(user?.firstName?.[0] ?? user?.email?.[0] ?? "?").toUpperCase()}
+                      </span>
+                    </div>
+                  )}
+                  <button
+                    onClick={logout}
+                    className="flex items-center gap-1.5 font-mono text-xs uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded hover:bg-white/5"
+                    title="Log out"
+                  >
+                    <LogOut className="h-3 w-3" />
+                    <span className="hidden sm:inline">Out</span>
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={login}
+                  className="flex items-center gap-1.5 font-mono text-xs uppercase tracking-widest text-primary hover:text-primary/80 transition-colors px-3 py-1.5 rounded border border-primary/30 hover:bg-primary/10"
+                >
+                  <LogIn className="h-3 w-3" />
+                  Log In
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </nav>

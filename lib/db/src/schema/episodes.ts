@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, jsonb, timestamp, varchar } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -12,6 +12,7 @@ export const episodesTable = pgTable("episodes", {
   duration: integer("duration"),
   status: text("status").notNull().default("pending"),
   errorMessage: text("error_message"),
+  userId: varchar("user_id", { length: 255 }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

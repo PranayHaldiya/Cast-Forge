@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGenerateEpisode } from "@/hooks/use-generate-episode";
+import { useAuth } from "@workspace/replit-auth-web";
 import { Mic2, AlertCircle, ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
 
@@ -17,10 +18,13 @@ const STAGE_ORDER = [
 
 export default function Studio() {
   const [, setLocation] = useLocation();
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
   const { generate, currentStep, error } = useGenerateEpisode();
   const hasStarted = useRef(false);
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!isAuthenticated) { setLocation("/"); return; }
     if (hasStarted.current) return;
     const payloadStr = sessionStorage.getItem("castforge_generation_payload");
     if (!payloadStr) { setLocation("/"); return; }
@@ -31,7 +35,7 @@ export default function Studio() {
     } catch {
       setLocation("/");
     }
-  }, [generate, setLocation]);
+  }, [generate, setLocation, isAuthenticated, authLoading]);
 
   useEffect(() => {
     if (currentStep?.step === "done" && currentStep.episodeId) {
