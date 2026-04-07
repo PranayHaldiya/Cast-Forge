@@ -72,6 +72,43 @@ export async function mixAudio(params: {
 }
 
 /**
+ * Concatenate an array of MP3 buffers into a single MP3 using ffmpeg.
+ */
+export async function concatenateAudioBuffers(buffers: Buffer[]): Promise<Buffer> {
+  const dir = getUploadsDir();
+  const ts = Date.now();
+  const tmpFiles: string[] = [];
+
+  try {
+    // Write each buffer to a temp file
+    const inputPaths: string[] = [];
+    for (let i = 0; i < buffers.length; i++) {
+      const tmpPath = path.join(dir, `tmp_seg_${ts}_${i}.mp3`);
+      fs.writeFileSync(tmpPath, buffers[i]);
+      tmpFiles.push(tmpPath);
+      inputPaths.push(tmpPath);
+    }
+
+    // Build ffmpeg concat list
+    const concatListPath = path.join(dir, `tmp_concat_list_${ts}.txt`);
+    const listContent = inputPaths.map((p) => `file '${p}'`).join("\n");
+    fs.writeFileSync(concatListPath, listContent);
+    tmpFiles.push(concatListPath);
+
+    const outputPath = path.join(dir, `tmp_stitched_${ts}.mp3`);
+    tmpFiles.push(outputPath);
+    const cmd = `ffmpeg -y -f concat -safe 0 -i "${concatListPath}" -c copy "${outputPath}" 2>&1`;
+    await execAsync(cmd, { timeout: 120000 });
+
+    return fs.readFileSync(outputPath);
+  } finally {
+    for (const f of tmpFiles) {
+      try { if (fs.existsSync(f)) fs.unlinkSync(f); } catch {}
+    }
+  }
+}
+
+/**
  * Get duration of an audio file in seconds using ffprobe.
  */
 export async function getAudioDuration(filePath: string): Promise<number> {

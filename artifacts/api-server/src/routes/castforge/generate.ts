@@ -12,7 +12,7 @@ import {
   getUploadsDir,
 } from "../../lib/elevenlabs.js";
 import { generateScript, scriptToText } from "../../lib/script-generator.js";
-import { mixAudio, getAudioDuration } from "../../lib/audio-mixer.js";
+import { mixAudio, getAudioDuration, concatenateAudioBuffers } from "../../lib/audio-mixer.js";
 import { logger } from "../../lib/logger.js";
 
 const router: IRouter = Router();
@@ -121,11 +121,15 @@ router.post("/castforge/generate", async (req, res): Promise<void> => {
       return { voiceId, text: line.text };
     });
 
-    // ─── STEP 3: Text-to-Dialogue ───
+    // ─── STEP 3: Text-to-Speech (per line) + Stitch ───
     sendEvent(res, { step: "recording", message: "Recording...", progress: 65 });
 
-    const dialogueBuffer = await generateDialogue(dialogueInputs);
-    req.log.info({ episodeId: episode.id, bytes: dialogueBuffer.length }, "Dialogue generated");
+    const dialogueBuffers = await generateDialogue(dialogueInputs);
+    req.log.info({ episodeId: episode.id, lines: dialogueBuffers.length }, "Dialogue lines generated");
+
+    // Stitch individual speaker lines into one audio file
+    sendEvent(res, { step: "stitching", message: "Stitching dialogue...", progress: 75 });
+    const dialogueBuffer = await concatenateAudioBuffers(dialogueBuffers);
 
     // ─── STEP 4: Audio Mixing ───
     sendEvent(res, { step: "mastering", message: "Mastering...", progress: 82 });

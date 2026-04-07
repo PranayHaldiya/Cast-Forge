@@ -1,6 +1,5 @@
 import path from "path";
 import fs from "fs";
-import { Readable } from "stream";
 
 const BASE_URL = "https://api.elevenlabs.io/v1";
 
@@ -33,16 +32,26 @@ export interface VoicePreview {
   mediaType: string;
 }
 
+const MIN_PREVIEW_TEXT_LENGTH = 100;
+const MIN_VOICE_DESC_LENGTH = 20;
+
+function padText(text: string, minLength: number, padWith: string): string {
+  if (text.length >= minLength) return text;
+  return text + " " + padWith.slice(0, minLength - text.length - 1);
+}
+
 export async function createVoicePreviews(
   description: string,
   sampleText?: string,
 ): Promise<VoicePreview[]> {
-  const text = sampleText ?? "Hello and welcome to the show! I'm so excited to be here with you today.";
+  const rawText = sampleText ?? "Hello and welcome to the show. Today we're going to dive into something truly fascinating that I think you'll find really interesting and worth your time.";
+  const text = padText(rawText, MIN_PREVIEW_TEXT_LENGTH, "Today we are going to talk about something genuinely fascinating and thought-provoking that will keep you engaged throughout the entire episode.");
+  const safeDescription = padText(description, MIN_VOICE_DESC_LENGTH, "A professional podcast host with a clear and engaging voice.");
   const res = await fetch(`${BASE_URL}/text-to-voice/create-previews`, {
     method: "POST",
     headers: getHeaders(),
     body: JSON.stringify({
-      voice_description: description,
+      voice_description: safeDescription,
       text,
       auto_generate_text: false,
     }),
@@ -66,10 +75,11 @@ export async function saveVoice(
   name: string,
   description: string,
 ): Promise<string> {
-  const res = await fetch(`${BASE_URL}/text-to-voice/create`, {
+  const safeDescription = padText(description, MIN_VOICE_DESC_LENGTH, "A professional podcast host with a clear and engaging voice.");
+  const res = await fetch(`${BASE_URL}/text-to-voice/create-voice-from-preview`, {
     method: "POST",
     headers: getHeaders(),
-    body: JSON.stringify({ generated_voice_id: generatedVoiceId, voice_name: name, voice_description: description }),
+    body: JSON.stringify({ generated_voice_id: generatedVoiceId, voice_name: name, voice_description: safeDescription }),
   });
   if (!res.ok) {
     const errorText = await res.text();
@@ -84,16 +94,15 @@ export interface DialogueInput {
   text: string;
 }
 
-export async function generateDialogue(inputs: DialogueInput[]): Promise<Buffer> {
-  const res = await fetch(`${BASE_URL}/text-to-dialogue`, {
-    method: "POST",
-    headers: { ...getHeaders(), Accept: "audio/mpeg" },
-    body: JSON.stringify({
-      inputs: inputs.map((i) => ({ voice_id: i.voiceId, text: i.text })),
-      model_id: "eleven_v3",
-    }),
-  });
-  return handleResponse(res, "text-to-dialogue");
+/**
+ * Generate multi-speaker dialogue by synthesizing each line individually
+ * and returning the concatenated buffers (to be stitched by audio-mixer).
+ */
+export async function generateDialogue(inputs: DialogueInput[]): Promise<Buffer[]> {
+  const buffers = await Promise.all(
+    inputs.map((input) => textToSpeechFlash(input.voiceId, input.text)),
+  );
+  return buffers;
 }
 
 export async function generateSoundEffect(
