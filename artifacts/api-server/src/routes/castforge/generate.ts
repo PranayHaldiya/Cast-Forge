@@ -114,11 +114,14 @@ router.post("/castforge/generate", async (req, res): Promise<void> => {
     req.log.info({ episodeId: episode.id, lineCount: scriptLines.length }, "Script generated");
     sendEvent(res, { step: "sfx", message: "Setting the stage...", progress: 55 });
 
-    // Map script voice labels (A, B, C) to actual voice IDs
+    // Map script voice labels (A, B, C) to actual voice IDs.
+    // Strip bracketed stage directions (e.g. [excited], [laughing]) from TTS text —
+    // they're useful in the stored transcript but must not be read aloud.
     const dialogueInputs = scriptLines.map((line) => {
       const idx = line.voice.charCodeAt(0) - 65;
       const voiceId = voiceIds[idx] ?? voiceIds[0];
-      return { voiceId, text: line.text };
+      const ttsText = line.text.replace(/\[.*?\]/g, "").replace(/\s{2,}/g, " ").trim();
+      return { voiceId, text: ttsText };
     });
 
     // ─── STEP 3: Text-to-Speech (per line) + Stitch ───
