@@ -75,6 +75,7 @@
     "zod": "catalog:"
   },
   "dependencies": {
+    "@clerk/react": "^6.1.4",
     "wavesurfer.js": "^7.12.5"
   }
 }
