@@ -2,6 +2,9 @@
 
 An instant AI podcast studio. Type a topic (or paste any URL), pick a show format, cast your AI hosts, and get a fully produced multi-voice podcast episode — script, voices, sound effects, and mastered audio — in about 60 seconds.
 
+<img width="1654" height="1312" alt="Screenshot 2026-04-07 181256" src="https://github.com/user-attachments/assets/88aaca0a-11f3-4969-949b-abeb37fa35fc" />
+
+
 ## Features
 
 - **Topic or URL** — type a subject or paste any article URL; the app extracts the topic automatically
