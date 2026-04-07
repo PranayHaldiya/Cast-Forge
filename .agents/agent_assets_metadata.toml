@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "FlmMEmYpINN49Hs0wj1Lq"
+uri = "file://README.md"
+type = "text"
+title = "CastForge README"
