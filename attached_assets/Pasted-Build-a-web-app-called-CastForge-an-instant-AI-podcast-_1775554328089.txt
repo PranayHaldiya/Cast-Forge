@@ -1,0 +1,43 @@
+Build a web app called "CastForge" — an instant AI podcast studio. The app lets users type any topic, pick a show format (Comedy, Debate, Explainer, True Crime, Hot Takes, Interview), customize AI host voices, and generates a fully produced multi-voice podcast episode with sound effects and background music in about 60 seconds.
+
+**Tech stack:** NextJs/React frontend with Tailwind CSS, Node.js/Express backend, TypeScript throughout.
+
+**Core flow:**
+1. User enters a topic, selects a format, and describes 2-3 host voices (or picks from presets)
+2. Backend orchestrates 5 ElevenLabs APIs in parallel:
+   - Voice Design API to generate custom host voices from text descriptions
+   - GPT-4o to write a natural podcast script with emotion tags
+   - Sound Effects API for transitions and format-specific audio stings
+   - Music API for intro/outro jingles
+   - Text-to-Dialogue API to render the multi-speaker script
+3. Audio mixer combines dialogue + SFX + music into a final MP3
+4. User gets a beautiful audio player with waveform visualization, sharing, and download
+
+**Design:**
+- Dark theme with a recording studio aesthetic
+- Electric purple (#8B5CF6) and warm amber (#F59E0B) accent gradients
+- Animated waveform hero on home page
+- Step-by-step production animation during generation
+- Mobile-first responsive layout
+- Use Framer Motion for animations
+- Use wavesurfer.js for the audio waveform player
+
+**API Integration (all via @elevenlabs/elevenlabs-js SDK):**
+- Voice Design: POST /v1/text-to-voice/create-previews with model eleven_multilingual_ttv_v2, then POST /v1/text-to-voice/create to save
+- Text-to-Dialogue: POST /v1/text-to-dialogue with array of {text, voice_id} pairs, using eleven_v3 model with emotion tags like [laughing], [whispering], [excited]
+- Sound Effects: POST /v1/sound-generation with text descriptions, 2-5 second durations
+- Music: POST /v1/music/stream with format-specific prompts, 10-15 second instrumental jingles
+- TTS Flash: POST /v1/text-to-speech/{voice_id}/stream with eleven_flash_v2_5 for quick voice previews
+
+**Pages:**
+1. Home/Create — topic input, format cards, host configuration, generate button
+2. Production Studio — full-screen animated generation progress showing each step
+3. Episode Player — waveform visualizer, play/pause/scrub, speed control, host info, share/download buttons
+
+**Important details:**
+- Run Voice Design, SFX generation, and Music generation in parallel to reduce total generation time
+- Cache SFX and music per format so they don't regenerate every time
+- Script generation prompt should produce natural conversation with interruptions (—), trailing off (...), and emotion tags in [brackets]
+- Audio mixing: layer intro music → cross-fade to dialogue → insert SFX at break points → cross-fade to outro music
+- Store generated episodes so shareable links work
+- Environment variables: ELEVENLABS_API_KEY and OPENAI_API_KEY via Replit Secrets
