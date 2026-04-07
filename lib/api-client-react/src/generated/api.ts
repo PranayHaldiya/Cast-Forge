@@ -5,18 +5,32 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  Episode,
+  ErrorResponse,
+  GenerateEpisode200,
+  GenerateEpisodeBody,
+  HealthStatus,
+  HostPreset,
+  PreviewVoiceBody,
+  SaveVoiceBody,
+  SavedVoice,
+  VoicePreviewResponse,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
-import type { ErrorType } from "../custom-fetch";
+import type { ErrorType, BodyType } from "../custom-fetch";
 
 type AwaitedInput<T> = PromiseLike<T> | T;
 
@@ -92,6 +106,585 @@ export function useHealthCheck<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getHealthCheckQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List all generated episodes
+ */
+export const getListEpisodesUrl = () => {
+  return `/api/castforge/episodes`;
+};
+
+export const listEpisodes = async (
+  options?: RequestInit,
+): Promise<Episode[]> => {
+  return customFetch<Episode[]>(getListEpisodesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListEpisodesQueryKey = () => {
+  return [`/api/castforge/episodes`] as const;
+};
+
+export const getListEpisodesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listEpisodes>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listEpisodes>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListEpisodesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listEpisodes>>> = ({
+    signal,
+  }) => listEpisodes({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listEpisodes>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListEpisodesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listEpisodes>>
+>;
+export type ListEpisodesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all generated episodes
+ */
+
+export function useListEpisodes<
+  TData = Awaited<ReturnType<typeof listEpisodes>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listEpisodes>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListEpisodesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get a specific episode
+ */
+export const getGetEpisodeUrl = (id: number) => {
+  return `/api/castforge/episodes/${id}`;
+};
+
+export const getEpisode = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Episode> => {
+  return customFetch<Episode>(getGetEpisodeUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetEpisodeQueryKey = (id: number) => {
+  return [`/api/castforge/episodes/${id}`] as const;
+};
+
+export const getGetEpisodeQueryOptions = <
+  TData = Awaited<ReturnType<typeof getEpisode>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getEpisode>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetEpisodeQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getEpisode>>> = ({
+    signal,
+  }) => getEpisode(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getEpisode>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetEpisodeQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getEpisode>>
+>;
+export type GetEpisodeQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Get a specific episode
+ */
+
+export function useGetEpisode<
+  TData = Awaited<ReturnType<typeof getEpisode>>,
+  TError = ErrorType<ErrorResponse>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getEpisode>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetEpisodeQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Delete an episode
+ */
+export const getDeleteEpisodeUrl = (id: number) => {
+  return `/api/castforge/episodes/${id}`;
+};
+
+export const deleteEpisode = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteEpisodeUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteEpisodeMutationOptions = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteEpisode>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteEpisode>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteEpisode"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteEpisode>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteEpisode(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteEpisodeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteEpisode>>
+>;
+
+export type DeleteEpisodeMutationError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary Delete an episode
+ */
+export const useDeleteEpisode = <
+  TError = ErrorType<ErrorResponse>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteEpisode>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteEpisode>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteEpisodeMutationOptions(options));
+};
+
+/**
+ * @summary Generate a podcast episode (SSE streaming progress)
+ */
+export const getGenerateEpisodeUrl = () => {
+  return `/api/castforge/generate`;
+};
+
+export const generateEpisode = async (
+  generateEpisodeBody: GenerateEpisodeBody,
+  options?: RequestInit,
+): Promise<GenerateEpisode200> => {
+  return customFetch<GenerateEpisode200>(getGenerateEpisodeUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(generateEpisodeBody),
+  });
+};
+
+export const getGenerateEpisodeMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateEpisode>>,
+    TError,
+    { data: BodyType<GenerateEpisodeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generateEpisode>>,
+  TError,
+  { data: BodyType<GenerateEpisodeBody> },
+  TContext
+> => {
+  const mutationKey = ["generateEpisode"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generateEpisode>>,
+    { data: BodyType<GenerateEpisodeBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return generateEpisode(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GenerateEpisodeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generateEpisode>>
+>;
+export type GenerateEpisodeMutationBody = BodyType<GenerateEpisodeBody>;
+export type GenerateEpisodeMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Generate a podcast episode (SSE streaming progress)
+ */
+export const useGenerateEpisode = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateEpisode>>,
+    TError,
+    { data: BodyType<GenerateEpisodeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generateEpisode>>,
+  TError,
+  { data: BodyType<GenerateEpisodeBody> },
+  TContext
+> => {
+  return useMutation(getGenerateEpisodeMutationOptions(options));
+};
+
+/**
+ * @summary Generate voice previews from a natural language description
+ */
+export const getPreviewVoiceUrl = () => {
+  return `/api/castforge/voices/preview`;
+};
+
+export const previewVoice = async (
+  previewVoiceBody: PreviewVoiceBody,
+  options?: RequestInit,
+): Promise<VoicePreviewResponse> => {
+  return customFetch<VoicePreviewResponse>(getPreviewVoiceUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(previewVoiceBody),
+  });
+};
+
+export const getPreviewVoiceMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof previewVoice>>,
+    TError,
+    { data: BodyType<PreviewVoiceBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof previewVoice>>,
+  TError,
+  { data: BodyType<PreviewVoiceBody> },
+  TContext
+> => {
+  const mutationKey = ["previewVoice"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof previewVoice>>,
+    { data: BodyType<PreviewVoiceBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return previewVoice(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PreviewVoiceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof previewVoice>>
+>;
+export type PreviewVoiceMutationBody = BodyType<PreviewVoiceBody>;
+export type PreviewVoiceMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Generate voice previews from a natural language description
+ */
+export const usePreviewVoice = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof previewVoice>>,
+    TError,
+    { data: BodyType<PreviewVoiceBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof previewVoice>>,
+  TError,
+  { data: BodyType<PreviewVoiceBody> },
+  TContext
+> => {
+  return useMutation(getPreviewVoiceMutationOptions(options));
+};
+
+/**
+ * @summary Save a voice preview to the voice library
+ */
+export const getSaveVoiceUrl = () => {
+  return `/api/castforge/voices/save`;
+};
+
+export const saveVoice = async (
+  saveVoiceBody: SaveVoiceBody,
+  options?: RequestInit,
+): Promise<SavedVoice> => {
+  return customFetch<SavedVoice>(getSaveVoiceUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(saveVoiceBody),
+  });
+};
+
+export const getSaveVoiceMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveVoice>>,
+    TError,
+    { data: BodyType<SaveVoiceBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof saveVoice>>,
+  TError,
+  { data: BodyType<SaveVoiceBody> },
+  TContext
+> => {
+  const mutationKey = ["saveVoice"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof saveVoice>>,
+    { data: BodyType<SaveVoiceBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return saveVoice(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SaveVoiceMutationResult = NonNullable<
+  Awaited<ReturnType<typeof saveVoice>>
+>;
+export type SaveVoiceMutationBody = BodyType<SaveVoiceBody>;
+export type SaveVoiceMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Save a voice preview to the voice library
+ */
+export const useSaveVoice = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveVoice>>,
+    TError,
+    { data: BodyType<SaveVoiceBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof saveVoice>>,
+  TError,
+  { data: BodyType<SaveVoiceBody> },
+  TContext
+> => {
+  return useMutation(getSaveVoiceMutationOptions(options));
+};
+
+/**
+ * @summary Get preset host configuration pairs
+ */
+export const getGetHostPresetsUrl = () => {
+  return `/api/castforge/presets`;
+};
+
+export const getHostPresets = async (
+  options?: RequestInit,
+): Promise<HostPreset[]> => {
+  return customFetch<HostPreset[]>(getGetHostPresetsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetHostPresetsQueryKey = () => {
+  return [`/api/castforge/presets`] as const;
+};
+
+export const getGetHostPresetsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getHostPresets>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getHostPresets>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetHostPresetsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getHostPresets>>> = ({
+    signal,
+  }) => getHostPresets({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getHostPresets>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetHostPresetsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getHostPresets>>
+>;
+export type GetHostPresetsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get preset host configuration pairs
+ */
+
+export function useGetHostPresets<
+  TData = Awaited<ReturnType<typeof getHostPresets>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getHostPresets>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetHostPresetsQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

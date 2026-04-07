@@ -8,3 +8,113 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface ErrorResponse {
+  error: string;
+}
+
+export interface Host {
+  name: string;
+  description: string;
+}
+
+export interface EpisodeHost {
+  name: string;
+  description: string;
+  /** @nullable */
+  voiceId: string | null;
+}
+
+export type GenerateEpisodeBodyFormat =
+  (typeof GenerateEpisodeBodyFormat)[keyof typeof GenerateEpisodeBodyFormat];
+
+export const GenerateEpisodeBodyFormat = {
+  comedy: "comedy",
+  debate: "debate",
+  explainer: "explainer",
+  true_crime: "true_crime",
+  hot_takes: "hot_takes",
+  interview: "interview",
+} as const;
+
+export interface GenerateEpisodeBody {
+  /**
+   * @minLength 3
+   * @maxLength 500
+   */
+  topic: string;
+  format: GenerateEpisodeBodyFormat;
+  /**
+   * @minItems 2
+   * @maxItems 3
+   */
+  hosts: Host[];
+}
+
+export type EpisodeStatus = (typeof EpisodeStatus)[keyof typeof EpisodeStatus];
+
+export const EpisodeStatus = {
+  pending: "pending",
+  generating: "generating",
+  ready: "ready",
+  failed: "failed",
+} as const;
+
+export interface Episode {
+  id: number;
+  topic: string;
+  format: string;
+  hosts: EpisodeHost[];
+  /** @nullable */
+  audioUrl: string | null;
+  /** @nullable */
+  scriptText: string | null;
+  /** @nullable */
+  duration: number | null;
+  status: EpisodeStatus;
+  /** @nullable */
+  errorMessage: string | null;
+  createdAt: string;
+}
+
+export interface PreviewVoiceBody {
+  /**
+   * @minLength 20
+   * @maxLength 1000
+   */
+  description: string;
+  /** @nullable */
+  sampleText?: string | null;
+}
+
+export interface VoicePreviewItem {
+  generatedVoiceId: string;
+  audioBase64: string;
+  mediaType: string;
+}
+
+export interface VoicePreviewResponse {
+  previews: VoicePreviewItem[];
+}
+
+export interface SaveVoiceBody {
+  generatedVoiceId: string;
+  name: string;
+  description: string;
+}
+
+export interface SavedVoice {
+  voiceId: string;
+  name: string;
+}
+
+export interface HostPreset {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+  suggestedFormats: string[];
+  hosts: Host[];
+}
+
+export type GenerateEpisode200 = { [key: string]: unknown };

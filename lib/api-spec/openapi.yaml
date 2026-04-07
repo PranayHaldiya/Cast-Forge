@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: castforge
+    description: CastForge podcast generation
 paths:
   /healthz:
     get:
@@ -24,6 +26,138 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /castforge/episodes:
+    get:
+      operationId: listEpisodes
+      tags: [castforge]
+      summary: List all generated episodes
+      responses:
+        "200":
+          description: List of episodes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Episode"
+
+  /castforge/episodes/{id}:
+    get:
+      operationId: getEpisode
+      tags: [castforge]
+      summary: Get a specific episode
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Episode details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Episode"
+        "404":
+          description: Episode not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteEpisode
+      tags: [castforge]
+      summary: Delete an episode
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted successfully
+        "404":
+          description: Episode not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /castforge/generate:
+    post:
+      operationId: generateEpisode
+      tags: [castforge]
+      summary: Generate a podcast episode (SSE streaming progress)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateEpisodeBody"
+      responses:
+        "200":
+          description: SSE stream of generation progress events
+          content:
+            text/event-stream:
+              schema:
+                type: object
+
+  /castforge/voices/preview:
+    post:
+      operationId: previewVoice
+      tags: [castforge]
+      summary: Generate voice previews from a natural language description
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PreviewVoiceBody"
+      responses:
+        "200":
+          description: Generated voice previews
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoicePreviewResponse"
+
+  /castforge/voices/save:
+    post:
+      operationId: saveVoice
+      tags: [castforge]
+      summary: Save a voice preview to the voice library
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveVoiceBody"
+      responses:
+        "200":
+          description: Saved voice details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SavedVoice"
+
+  /castforge/presets:
+    get:
+      operationId: getHostPresets
+      tags: [castforge]
+      summary: Get preset host configuration pairs
+      responses:
+        "200":
+          description: Available host presets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HostPreset"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +168,183 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    Host:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+      required:
+        - name
+        - description
+
+    EpisodeHost:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        voiceId:
+          type: ["string", "null"]
+      required:
+        - name
+        - description
+        - voiceId
+
+    GenerateEpisodeBody:
+      type: object
+      properties:
+        topic:
+          type: string
+          minLength: 3
+          maxLength: 500
+        format:
+          type: string
+          enum: [comedy, debate, explainer, true_crime, hot_takes, interview]
+        hosts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Host"
+          minItems: 2
+          maxItems: 3
+      required:
+        - topic
+        - format
+        - hosts
+
+    Episode:
+      type: object
+      properties:
+        id:
+          type: integer
+        topic:
+          type: string
+        format:
+          type: string
+        hosts:
+          type: array
+          items:
+            $ref: "#/components/schemas/EpisodeHost"
+        audioUrl:
+          type: ["string", "null"]
+        scriptText:
+          type: ["string", "null"]
+        duration:
+          type: ["integer", "null"]
+        status:
+          type: string
+          enum: [pending, generating, ready, failed]
+        errorMessage:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - topic
+        - format
+        - hosts
+        - audioUrl
+        - scriptText
+        - duration
+        - status
+        - errorMessage
+        - createdAt
+
+    PreviewVoiceBody:
+      type: object
+      properties:
+        description:
+          type: string
+          minLength: 20
+          maxLength: 1000
+        sampleText:
+          type: ["string", "null"]
+      required:
+        - description
+
+    VoicePreviewItem:
+      type: object
+      properties:
+        generatedVoiceId:
+          type: string
+        audioBase64:
+          type: string
+        mediaType:
+          type: string
+      required:
+        - generatedVoiceId
+        - audioBase64
+        - mediaType
+
+    VoicePreviewResponse:
+      type: object
+      properties:
+        previews:
+          type: array
+          items:
+            $ref: "#/components/schemas/VoicePreviewItem"
+      required:
+        - previews
+
+    SaveVoiceBody:
+      type: object
+      properties:
+        generatedVoiceId:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+      required:
+        - generatedVoiceId
+        - name
+        - description
+
+    SavedVoice:
+      type: object
+      properties:
+        voiceId:
+          type: string
+        name:
+          type: string
+      required:
+        - voiceId
+        - name
+
+    HostPreset:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        icon:
+          type: string
+        suggestedFormats:
+          type: array
+          items:
+            type: string
+        hosts:
+          type: array
+          items:
+            $ref: "#/components/schemas/Host"
+      required:
+        - id
+        - name
+        - description
+        - icon
+        - suggestedFormats
+        - hosts

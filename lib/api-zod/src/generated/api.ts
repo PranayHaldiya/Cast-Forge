@@ -14,3 +14,148 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * @summary List all generated episodes
+ */
+export const ListEpisodesResponseItem = zod.object({
+  id: zod.number(),
+  topic: zod.string(),
+  format: zod.string(),
+  hosts: zod.array(
+    zod.object({
+      name: zod.string(),
+      description: zod.string(),
+      voiceId: zod.string().nullable(),
+    }),
+  ),
+  audioUrl: zod.string().nullable(),
+  scriptText: zod.string().nullable(),
+  duration: zod.number().nullable(),
+  status: zod.enum(["pending", "generating", "ready", "failed"]),
+  errorMessage: zod.string().nullable(),
+  createdAt: zod.coerce.date(),
+});
+export const ListEpisodesResponse = zod.array(ListEpisodesResponseItem);
+
+/**
+ * @summary Get a specific episode
+ */
+export const GetEpisodeParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetEpisodeResponse = zod.object({
+  id: zod.number(),
+  topic: zod.string(),
+  format: zod.string(),
+  hosts: zod.array(
+    zod.object({
+      name: zod.string(),
+      description: zod.string(),
+      voiceId: zod.string().nullable(),
+    }),
+  ),
+  audioUrl: zod.string().nullable(),
+  scriptText: zod.string().nullable(),
+  duration: zod.number().nullable(),
+  status: zod.enum(["pending", "generating", "ready", "failed"]),
+  errorMessage: zod.string().nullable(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete an episode
+ */
+export const DeleteEpisodeParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Generate a podcast episode (SSE streaming progress)
+ */
+export const generateEpisodeBodyTopicMin = 3;
+export const generateEpisodeBodyTopicMax = 500;
+
+export const generateEpisodeBodyHostsMin = 2;
+export const generateEpisodeBodyHostsMax = 3;
+
+export const GenerateEpisodeBody = zod.object({
+  topic: zod
+    .string()
+    .min(generateEpisodeBodyTopicMin)
+    .max(generateEpisodeBodyTopicMax),
+  format: zod.enum([
+    "comedy",
+    "debate",
+    "explainer",
+    "true_crime",
+    "hot_takes",
+    "interview",
+  ]),
+  hosts: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        description: zod.string(),
+      }),
+    )
+    .min(generateEpisodeBodyHostsMin)
+    .max(generateEpisodeBodyHostsMax),
+});
+
+/**
+ * @summary Generate voice previews from a natural language description
+ */
+export const previewVoiceBodyDescriptionMin = 20;
+export const previewVoiceBodyDescriptionMax = 1000;
+
+export const PreviewVoiceBody = zod.object({
+  description: zod
+    .string()
+    .min(previewVoiceBodyDescriptionMin)
+    .max(previewVoiceBodyDescriptionMax),
+  sampleText: zod.string().nullish(),
+});
+
+export const PreviewVoiceResponse = zod.object({
+  previews: zod.array(
+    zod.object({
+      generatedVoiceId: zod.string(),
+      audioBase64: zod.string(),
+      mediaType: zod.string(),
+    }),
+  ),
+});
+
+/**
+ * @summary Save a voice preview to the voice library
+ */
+export const SaveVoiceBody = zod.object({
+  generatedVoiceId: zod.string(),
+  name: zod.string(),
+  description: zod.string(),
+});
+
+export const SaveVoiceResponse = zod.object({
+  voiceId: zod.string(),
+  name: zod.string(),
+});
+
+/**
+ * @summary Get preset host configuration pairs
+ */
+export const GetHostPresetsResponseItem = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  description: zod.string(),
+  icon: zod.string(),
+  suggestedFormats: zod.array(zod.string()),
+  hosts: zod.array(
+    zod.object({
+      name: zod.string(),
+      description: zod.string(),
+    }),
+  ),
+});
+export const GetHostPresetsResponse = zod.array(GetHostPresetsResponseItem);

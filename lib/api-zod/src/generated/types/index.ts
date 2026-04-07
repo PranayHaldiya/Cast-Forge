@@ -6,4 +6,18 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./episode";
+export * from "./episodeHost";
+export * from "./episodeStatus";
+export * from "./errorResponse";
+export * from "./generateEpisode200";
+export * from "./generateEpisodeBody";
+export * from "./generateEpisodeBodyFormat";
 export * from "./healthStatus";
+export * from "./host";
+export * from "./hostPreset";
+export * from "./previewVoiceBody";
+export * from "./savedVoice";
+export * from "./saveVoiceBody";
+export * from "./voicePreviewItem";
+export * from "./voicePreviewResponse";
