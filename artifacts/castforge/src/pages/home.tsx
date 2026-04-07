@@ -10,6 +10,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+
 const PRESET_ICONS: Record<string, LucideIcon> = {
   Laugh, Swords, Search, GraduationCap, Flame, Mic2,
 };
@@ -44,40 +45,47 @@ export default function Home() {
   const [topic, setTopic] = useState("");
   const [selectedFormat, setSelectedFormat] = useState<GenerateEpisodeBodyFormat | null>(null);
   const [selectedPresetId, setSelectedPresetId] = useState<string | null>(null);
-  const [detectedUrl, setDetectedUrl] = useState<string | null>(null);
   const [sourceTitle, setSourceTitle] = useState<string | null>(null);
   const [sourceUrl, setSourceUrl] = useState<string | null>(null);
 
   const handleTopicChange = useCallback((value: string) => {
     setTopic(value);
-    if (isUrl(value)) {
-      setDetectedUrl(value.trim());
-    } else {
-      setDetectedUrl(null);
-      if (sourceUrl) { setSourceTitle(null); setSourceUrl(null); }
+    // If user edits after URL extraction, clear the source attribution
+    if (sourceUrl && !isUrl(value)) {
+      setSourceTitle(null);
+      setSourceUrl(null);
     }
   }, [sourceUrl]);
 
-  const handleFetchUrl = async () => {
-    if (!detectedUrl) return;
+  // Auto-extract on paste: if a URL is pasted, immediately fetch the topic
+  const handlePaste = useCallback(async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const pasted = e.clipboardData.getData("text").trim();
+    if (!isUrl(pasted)) return;
+
+    e.preventDefault();
+    setTopic(pasted); // show the URL while loading
+    setSourceTitle(null);
+    setSourceUrl(null);
+
     try {
-      const result = await fetchUrlMutation.mutateAsync({ data: { url: detectedUrl } });
+      const result = await fetchUrlMutation.mutateAsync({ data: { url: pasted } });
       setTopic(result.topic);
       setSourceTitle(result.sourceTitle);
       setSourceUrl(result.sourceUrl);
-      setDetectedUrl(null);
     } catch (err) {
       toast({
         title: "Could not read URL",
         description: err instanceof Error ? err.message : "Failed to extract content",
         variant: "destructive",
       });
+      // Leave the URL in the box so the user can try again or edit it manually
     }
-  };
+  }, [fetchUrlMutation, toast]);
 
   const clearSource = () => {
-    setSourceTitle(null); setSourceUrl(null);
-    setTopic(""); setDetectedUrl(null);
+    setSourceTitle(null);
+    setSourceUrl(null);
+    setTopic("");
   };
 
   const handleGenerate = () => {
@@ -102,7 +110,7 @@ export default function Home() {
   };
 
   const isFetching = fetchUrlMutation.isPending;
-  const canGenerate = !!(topic && topic.length >= 3 && selectedFormat && selectedPresetId);
+  const canGenerate = !!(topic && topic.length >= 3 && selectedFormat && selectedPresetId && !isFetching);
 
   return (
     <div className="container mx-auto px-4 py-14 md:py-20 max-w-4xl relative z-10">
@@ -168,30 +176,23 @@ export default function Home() {
               <textarea
                 value={topic}
                 onChange={(e) => handleTopicChange(e.target.value)}
-                placeholder={detectedUrl ? "URL detected — hit Extract to pull the topic" : "Type a topic or paste a URL to any article..."}
+                onPaste={handlePaste}
+                placeholder="Type a topic or paste a URL to any article..."
                 rows={3}
-                className="w-full resize-none bg-card/60 border border-border rounded-sm pl-6 pr-48 py-5 text-lg text-foreground placeholder:text-muted-foreground/40 font-sans leading-relaxed focus:outline-none focus:border-primary/50 focus:bg-card transition-colors"
+                disabled={isFetching}
+                className="w-full resize-none bg-card/60 border border-border rounded-sm pl-6 pr-6 py-5 text-lg text-foreground placeholder:text-muted-foreground/40 font-sans leading-relaxed focus:outline-none focus:border-primary/50 focus:bg-card transition-colors disabled:opacity-60"
               />
 
-              {/* URL fetch button */}
-              {detectedUrl && (
-                <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                  <button
-                    onClick={handleFetchUrl}
-                    disabled={isFetching}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-sm bg-primary text-primary-foreground font-mono text-xs uppercase tracking-wider hover:bg-primary/90 disabled:opacity-60 transition-colors"
-                  >
-                    {isFetching ? (
-                      <><Loader2 className="h-3.5 w-3.5 animate-spin" />Reading</>
-                    ) : (
-                      <><Link2 className="h-3.5 w-3.5" />Extract</>
-                    )}
-                  </button>
+              {/* Fetching overlay */}
+              {isFetching && (
+                <div className="absolute inset-0 flex items-center justify-center gap-3 bg-card/80 rounded-sm border border-primary/30">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <span className="font-mono text-xs uppercase tracking-widest text-primary">Extracting topic...</span>
                 </div>
               )}
             </div>
 
-            {/* Source chip */}
+            {/* Source chip — shown after successful extraction */}
             {sourceTitle && sourceUrl && (
               <motion.div
                 initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }}
@@ -207,7 +208,7 @@ export default function Home() {
               </motion.div>
             )}
 
-            {!detectedUrl && !sourceUrl && (
+            {!sourceUrl && !isFetching && (
               <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground/40 pl-1">
                 Tip — paste any article URL to auto-extract the topic
               </p>
