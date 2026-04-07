@@ -2,14 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { useParams, Link } from "wouter";
 import { useGetEpisode } from "@workspace/api-client-react";
 import WaveSurfer from "wavesurfer.js";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
-import { 
-  Play, Pause, SkipBack, SkipForward, Download, 
-  Share2, ChevronDown, ChevronUp, Radio, Headphones 
+import {
+  Play, Pause, SkipBack, SkipForward, Download,
+  Share2, ChevronDown, ChevronUp, Radio, ArrowLeft, Mic2,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -19,6 +15,11 @@ function formatTime(seconds: number) {
   const s = Math.floor(seconds % 60);
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
+
+const FORMAT_LABELS: Record<string, string> = {
+  comedy: "COMEDY", debate: "DEBATE", explainer: "EXPLAINER",
+  true_crime: "TRUE CRIME", hot_takes: "HOT TAKES", interview: "INTERVIEW",
+};
 
 export default function EpisodePlayer() {
   const params = useParams();
@@ -39,63 +40,46 @@ export default function EpisodePlayer() {
 
     const ws = WaveSurfer.create({
       container: waveformRef.current,
-      waveColor: 'rgba(139, 92, 246, 0.4)', // primary/40
-      progressColor: '#8B5CF6', // primary
-      cursorColor: '#F59E0B', // accent
-      barWidth: 3,
-      barGap: 3,
-      barRadius: 3,
-      height: 100,
+      waveColor: "rgba(234, 170, 52, 0.25)",
+      progressColor: "rgba(234, 170, 52, 0.85)",
+      cursorColor: "rgba(230, 57, 70, 0.8)",
+      barWidth: 2,
+      barGap: 2,
+      barRadius: 2,
+      height: 80,
       normalize: true,
       url: episode.audioUrl,
     });
 
-    ws.on('ready', () => {
-      setDuration(ws.getDuration());
-    });
-
-    ws.on('audioprocess', () => {
-      setCurrentTime(ws.getCurrentTime());
-    });
-
-    ws.on('play', () => setIsPlaying(true));
-    ws.on('pause', () => setIsPlaying(false));
-    ws.on('finish', () => setIsPlaying(false));
+    ws.on("ready", () => setDuration(ws.getDuration()));
+    ws.on("audioprocess", () => setCurrentTime(ws.getCurrentTime()));
+    ws.on("play", () => setIsPlaying(true));
+    ws.on("pause", () => setIsPlaying(false));
+    ws.on("finish", () => setIsPlaying(false));
 
     wavesurferRef.current = ws;
-
-    return () => {
-      ws.destroy();
-    };
+    return () => ws.destroy();
   }, [episode?.audioUrl]);
 
-  const togglePlay = () => {
-    wavesurferRef.current?.playPause();
-  };
-
-  const skip = (seconds: number) => {
-    wavesurferRef.current?.skip(seconds);
-  };
-
+  const togglePlay = () => wavesurferRef.current?.playPause();
+  const skip = (s: number) => wavesurferRef.current?.skip(s);
   const cyclePlaybackRate = () => {
-    const rates = [0.5, 1, 1.5, 2];
-    const currentIndex = rates.indexOf(playbackRate);
-    const nextRate = rates[(currentIndex + 1) % rates.length];
-    setPlaybackRate(nextRate);
-    wavesurferRef.current?.setPlaybackRate(nextRate);
+    const rates = [0.5, 1, 1.25, 1.5, 2];
+    const next = rates[(rates.indexOf(playbackRate) + 1) % rates.length];
+    setPlaybackRate(next);
+    wavesurferRef.current?.setPlaybackRate(next);
   };
-
   const copyShareLink = () => {
     navigator.clipboard.writeText(window.location.href);
-    toast({ title: "Link copied to clipboard!" });
+    toast({ title: "Link copied" });
   };
 
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <div className="animate-pulse flex flex-col items-center gap-4 text-muted-foreground">
-          <Radio className="h-8 w-8 animate-bounce" />
-          Tuning in...
+        <div className="flex flex-col items-center gap-3 text-muted-foreground/40">
+          <Radio className="h-7 w-7 animate-spin" style={{ animationDuration: "2s" }} />
+          <span className="font-mono text-[10px] uppercase tracking-[0.3em]">Tuning in</span>
         </div>
       </div>
     );
@@ -105,148 +89,164 @@ export default function EpisodePlayer() {
     return (
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center space-y-4">
-          <h2 className="text-2xl font-bold text-white">Episode not found</h2>
-          <Button asChild variant="outline">
-            <Link href="/">Go Home</Link>
-          </Button>
+          <h2 className="font-display text-5xl tracking-wide text-foreground">NOT FOUND</h2>
+          <Link href="/episodes" className="inline-flex items-center gap-2 font-mono text-xs text-muted-foreground hover:text-foreground transition-colors">
+            <ArrowLeft className="h-3.5 w-3.5" /> Back to Library
+          </Link>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-5xl relative z-10 flex flex-col min-h-[calc(100vh-4rem)]">
-      
-      {/* Header Info */}
-      <div className="text-center mb-12 mt-8 space-y-4">
-        <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 mb-2">
-          {episode.format.replace("_", " ")}
-        </Badge>
-        <h1 className="text-4xl md:text-5xl font-bold text-white max-w-3xl mx-auto leading-tight">
-          {episode.topic}
-        </h1>
-        <p className="text-muted-foreground text-lg flex items-center justify-center gap-2">
-          <Headphones className="h-5 w-5" />
-          Hosted by {episode.hosts.map(h => h.name).join(" & ")}
-        </p>
+    <div className="container mx-auto px-4 py-12 max-w-4xl relative z-10">
+
+      {/* Breadcrumb */}
+      <div className="mb-10">
+        <Link href="/episodes" className="inline-flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground/40 hover:text-muted-foreground transition-colors">
+          <ArrowLeft className="h-3 w-3" /> Library
+        </Link>
       </div>
 
-      {/* Main Player Card */}
-      <Card className="bg-white/5 border-white/10 backdrop-blur-sm p-6 md:p-10 rounded-3xl shadow-2xl relative overflow-hidden mb-12">
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary via-accent to-primary opacity-50" />
-        
-        {/* Waveform */}
-        <div className="w-full mb-8 relative">
-          <div ref={waveformRef} className="w-full relative z-10" />
+      {/* Header */}
+      <div className="mb-12 space-y-4">
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-primary border border-primary/30 rounded-sm px-1.5 py-0.5">
+            {FORMAT_LABELS[episode.format] ?? episode.format}
+          </span>
         </div>
+        <h1 className="font-display text-[clamp(2rem,6vw,4rem)] leading-none tracking-wide text-foreground">
+          {episode.topic.toUpperCase()}
+        </h1>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Mic2 className="h-4 w-4 text-primary shrink-0" />
+          <span className="font-sans">{episode.hosts.map((h) => h.name).join(" & ")}</span>
+        </div>
+      </div>
 
-        {/* Controls */}
+      {/* Divider */}
+      <div className="h-px w-full bg-border mb-10" />
+
+      {/* Player */}
+      <div className="rounded-sm border border-border bg-card/60 p-6 md:p-8 mb-10 space-y-8">
+        {/* Waveform */}
+        <div ref={waveformRef} className="w-full" />
+
+        {/* Time + Controls */}
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="text-sm font-mono text-muted-foreground w-24 text-center md:text-left">
+          <span className="font-mono text-sm text-muted-foreground tabular-nums">
             {formatTime(currentTime)} / {formatTime(duration)}
-          </div>
+          </span>
 
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => skip(-15)} className="text-white hover:bg-white/10 rounded-full h-12 w-12">
-              <SkipBack className="h-6 w-6" />
-            </Button>
-            
-            <Button 
-              size="icon" 
-              onClick={togglePlay}
-              className="h-16 w-16 rounded-full bg-primary hover:bg-primary/90 text-white shadow-[0_0_20px_rgba(139,92,246,0.3)] transition-all hover:scale-105"
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => skip(-15)}
+              className="h-10 w-10 flex items-center justify-center rounded-sm border border-border text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
             >
-              {isPlaying ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8 ml-1" />}
-            </Button>
-            
-            <Button variant="ghost" size="icon" onClick={() => skip(15)} className="text-white hover:bg-white/10 rounded-full h-12 w-12">
-              <SkipForward className="h-6 w-6" />
-            </Button>
+              <SkipBack className="h-4 w-4" />
+            </button>
+
+            <button
+              onClick={togglePlay}
+              className="h-14 w-14 flex items-center justify-center rounded-sm bg-primary text-primary-foreground hover:bg-primary/90 transition-all amber-glow"
+            >
+              {isPlaying ? (
+                <Pause className="h-6 w-6" />
+              ) : (
+                <Play className="h-6 w-6 ml-0.5" />
+              )}
+            </button>
+
+            <button
+              onClick={() => skip(15)}
+              className="h-10 w-10 flex items-center justify-center rounded-sm border border-border text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
+            >
+              <SkipForward className="h-4 w-4" />
+            </button>
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={cyclePlaybackRate} className="font-mono bg-white/5 border-white/10 hover:bg-white/10 rounded-full w-14">
+            <button
+              onClick={cyclePlaybackRate}
+              className="px-3 py-1.5 rounded-sm border border-border font-mono text-xs text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors tabular-nums w-12 text-center"
+            >
               {playbackRate}x
-            </Button>
-            
+            </button>
             {episode.audioUrl && (
-              <Button asChild variant="outline" size="icon" className="bg-white/5 border-white/10 hover:bg-white/10 rounded-full">
-                <a href={episode.audioUrl} download>
-                  <Download className="h-4 w-4 text-white" />
-                </a>
-              </Button>
+              <a
+                href={episode.audioUrl}
+                download
+                className="h-8 w-8 flex items-center justify-center rounded-sm border border-border text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
+              >
+                <Download className="h-3.5 w-3.5" />
+              </a>
             )}
-            
-            <Button variant="outline" size="icon" onClick={copyShareLink} className="bg-white/5 border-white/10 hover:bg-white/10 rounded-full">
-              <Share2 className="h-4 w-4 text-white" />
-            </Button>
+            <button
+              onClick={copyShareLink}
+              className="h-8 w-8 flex items-center justify-center rounded-sm border border-border text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
+            >
+              <Share2 className="h-3.5 w-3.5" />
+            </button>
           </div>
         </div>
-      </Card>
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-12">
-        {/* Hosts Info */}
-        <div className="md:col-span-1 space-y-4">
-          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-            <MicIcon className="h-5 w-5 text-primary" />
-            Your Hosts
-          </h3>
-          <div className="space-y-4">
-            {episode.hosts.map((host, i) => (
-              <Card key={i} className="p-4 bg-white/5 border-white/10">
-                <h4 className="font-bold text-white">{host.name}</h4>
-                <p className="text-sm text-muted-foreground mt-1">{host.description}</p>
-              </Card>
-            ))}
+      {/* Hosts + Script grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-14">
+        {/* Hosts */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-4 mb-4">
+            <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground/50">Hosts</span>
+            <div className="h-px flex-1 bg-border" />
           </div>
+          {episode.hosts.map((host, i) => (
+            <div key={i} className="p-4 rounded-sm border border-border bg-card/40 space-y-1">
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                <h4 className="font-sans font-semibold text-sm text-foreground">{host.name}</h4>
+              </div>
+              <p className="text-xs text-muted-foreground leading-relaxed pl-3.5">{host.description}</p>
+            </div>
+          ))}
         </div>
 
         {/* Script */}
         <div className="md:col-span-2">
           {episode.scriptText && (
-            <Card className="bg-white/5 border-white/10 overflow-hidden">
-              <Button 
-                variant="ghost" 
+            <div className="rounded-sm border border-border bg-card/40 overflow-hidden">
+              <button
                 onClick={() => setShowScript(!showScript)}
-                className="w-full flex items-center justify-between p-4 h-auto rounded-none hover:bg-white/10 text-white font-semibold text-lg"
+                className="w-full flex items-center justify-between px-5 py-4 hover:bg-card/80 transition-colors"
               >
-                Generated Script
-                {showScript ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-              </Button>
-              
+                <div className="flex items-center gap-4">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.25em] text-muted-foreground/50">Script</span>
+                  <div className="h-px w-12 bg-border" />
+                </div>
+                {showScript
+                  ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                  : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+              </button>
+
               <AnimatePresence>
                 {showScript && (
                   <motion.div
                     initial={{ height: 0 }}
                     animate={{ height: "auto" }}
                     exit={{ height: 0 }}
-                    className="overflow-hidden"
+                    className="overflow-hidden border-t border-border"
                   >
-                    <Separator className="bg-white/10" />
-                    <div className="p-4 bg-black/20">
-                      <ScrollArea className="h-[400px] pr-4">
-                        <div className="space-y-4 whitespace-pre-wrap font-mono text-sm leading-relaxed text-muted-foreground">
-                          {episode.scriptText}
-                        </div>
-                      </ScrollArea>
-                    </div>
+                    <ScrollArea className="h-[380px] p-5">
+                      <div className="font-mono text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap">
+                        {episode.scriptText}
+                      </div>
+                    </ScrollArea>
                   </motion.div>
                 )}
               </AnimatePresence>
-            </Card>
+            </div>
           )}
         </div>
       </div>
     </div>
   );
-}
-
-function MicIcon(props: any) {
-  return (
-    <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-      <line x1="12" x2="12" y1="19" y2="22" />
-    </svg>
-  )
 }
